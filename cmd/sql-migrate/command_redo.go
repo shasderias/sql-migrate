@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rubenv/sql-migrate"
+	"github.com/shasderias/sql-migrate/pkg/migrate"
 )
 
 type RedoCommand struct {
@@ -49,17 +49,17 @@ func (c *RedoCommand) Run(args []string) int {
 		return 1
 	}
 
-	db, dialect, err := GetConnection(env)
+	db, err := migrate.GetDB(env.Dialect, env.DataSource, env.TableName)
 	if err != nil {
 		ui.Error(err.Error())
 		return 1
 	}
 
-	source := migrate.FileMigrationSource{
+	source := migrate.FileSource{
 		Dir: env.Dir,
 	}
 
-	migrations, _, err := migrate.PlanMigration(db, dialect, source, migrate.Down, 1)
+	migrations, err := migrate.Plan(db, source, migrate.Down, 1)
 	if len(migrations) == 0 {
 		ui.Output("Nothing to do!")
 		return 0
@@ -69,19 +69,19 @@ func (c *RedoCommand) Run(args []string) int {
 		PrintMigration(migrations[0], migrate.Down)
 		PrintMigration(migrations[0], migrate.Up)
 	} else {
-		_, err := migrate.ExecMax(db, dialect, source, migrate.Down, 1)
+		_, err := migrate.ExecMax(db, source, migrate.Down, 1)
 		if err != nil {
 			ui.Error(fmt.Sprintf("Migration (down) failed: %s", err))
 			return 1
 		}
 
-		_, err = migrate.ExecMax(db, dialect, source, migrate.Up, 1)
+		_, err = migrate.ExecMax(db, source, migrate.Up, 1)
 		if err != nil {
 			ui.Error(fmt.Sprintf("Migration (up) failed: %s", err))
 			return 1
 		}
 
-		ui.Output(fmt.Sprintf("Reapplied migration %s.", migrations[0].Id))
+		ui.Output(fmt.Sprintf("Reapplied migration %s.", migrations[0].ID))
 	}
 
 	return 0

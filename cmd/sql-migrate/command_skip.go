@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rubenv/sql-migrate"
+	"github.com/shasderias/sql-migrate/pkg/migrate"
 )
 
 type SkipCommand struct {
@@ -53,22 +53,22 @@ func (c *SkipCommand) Run(args []string) int {
 	return 0
 }
 
-func SkipMigrations(dir migrate.MigrationDirection, dryrun bool, limit int) error {
+func SkipMigrations(dir migrate.Direction, dryrun bool, limit int) error {
 	env, err := GetEnvironment()
 	if err != nil {
-		return fmt.Errorf("Could not parse config: %s", err)
+		return fmt.Errorf("error parsing config: %s", err)
 	}
 
-	db, dialect, err := GetConnection(env)
+	db, err := migrate.GetDB(env.Dialect, env.DataSource, env.TableName)
 	if err != nil {
 		return err
 	}
 
-	source := migrate.FileMigrationSource{
+	source := migrate.FileSource{
 		Dir: env.Dir,
 	}
 
-	n, err := migrate.SkipMax(db, dialect, source, dir, limit)
+	n, err := migrate.SkipMax(db, source, dir, limit)
 	if err != nil {
 		return fmt.Errorf("Migration failed: %s", err)
 	}

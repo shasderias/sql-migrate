@@ -4,7 +4,7 @@ import (
 	"flag"
 	"strings"
 
-	"github.com/rubenv/sql-migrate"
+	"github.com/shasderias/sql-migrate/pkg/migrate"
 )
 
 type UpCommand struct {

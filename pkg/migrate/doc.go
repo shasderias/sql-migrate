@@ -98,10 +98,10 @@ Import sql-migrate into your application:
 Set up a source of migrations, this can be from memory, from a set of files or from bindata (more on that later):
 
 	// Hardcoded strings in memory:
-	migrations := &migrate.MemoryMigrationSource{
+	migrations := &migrate.MemorySource{
 		Migrations: []*migrate.Migration{
 			&migrate.Migration{
-				Id:   "123",
+				ID:   "123",
 				Up:   []string{"CREATE TABLE people (id int)"},
 				Down: []string{"DROP TABLE people"},
 			},
@@ -109,7 +109,7 @@ Set up a source of migrations, this can be from memory, from a set of files or f
 	}
 
 	// OR: Read migrations from a folder:
-	migrations := &migrate.FileMigrationSource{
+	migrations := &migrate.FileSource{
 		Dir: "db/migrations",
 	}
 
@@ -228,12 +228,12 @@ Then proceed as usual.
 
 Extending
 
-Adding a new migration source means implementing MigrationSource.
+Adding a new migration source means implementing Source.
 
-	type MigrationSource interface {
-		FindMigrations() ([]*Migration, error)
+	type Source interface {
+		Find() ([]*Migration, error)
 	}
 
-The resulting slice of migrations will be executed in the given order, so it should usually be sorted by the Id field.
+The resulting slice of migrations will be executed in the given order, so it should usually be sorted by the ID field.
 */
 package migrate

@@ -8,7 +8,8 @@ import (
 	"time"
 
 	"github.com/olekukonko/tablewriter"
-	"github.com/rubenv/sql-migrate"
+
+	"github.com/shasderias/sql-migrate/pkg/migrate"
 )
 
 type StatusCommand struct {
@@ -48,22 +49,23 @@ func (c *StatusCommand) Run(args []string) int {
 		return 1
 	}
 
-	db, dialect, err := GetConnection(env)
+	db, err := migrate.GetDB(env.Dialect, env.DataSource, env.TableName)
 	if err != nil {
 		ui.Error(err.Error())
 		return 1
 	}
 
-	source := migrate.FileMigrationSource{
+	source := migrate.FileSource{
 		Dir: env.Dir,
 	}
-	migrations, err := source.FindMigrations()
+
+	migrations, err := source.Find()
 	if err != nil {
 		ui.Error(err.Error())
 		return 1
 	}
 
-	records, err := migrate.GetMigrationRecords(db, dialect)
+	records, err := db.GetRecords()
 	if err != nil {
 		ui.Error(err.Error())
 		return 1
@@ -76,31 +78,31 @@ func (c *StatusCommand) Run(args []string) int {
 	rows := make(map[string]*statusRow)
 
 	for _, m := range migrations {
-		rows[m.Id] = &statusRow{
-			Id:       m.Id,
+		rows[m.ID] = &statusRow{
+			ID:       m.ID,
 			Migrated: false,
 		}
 	}
 
 	for _, r := range records {
-		if rows[r.Id] == nil {
-			ui.Warn(fmt.Sprintf("Could not find migration file: %v", r.Id))
+		if rows[r.ID] == nil {
+			ui.Warn(fmt.Sprintf("Could not find migration file: %v", r.ID))
 			continue
 		}
 
-		rows[r.Id].Migrated = true
-		rows[r.Id].AppliedAt = r.AppliedAt
+		rows[r.ID].Migrated = true
+		rows[r.ID].AppliedAt = r.AppliedAt
 	}
 
 	for _, m := range migrations {
-		if rows[m.Id] != nil && rows[m.Id].Migrated {
+		if rows[m.ID] != nil && rows[m.ID].Migrated {
 			table.Append([]string{
-				m.Id,
-				rows[m.Id].AppliedAt.String(),
+				m.ID,
+				rows[m.ID].AppliedAt.String(),
 			})
 		} else {
 			table.Append([]string{
-				m.Id,
+				m.ID,
 				"no",
 			})
 		}
@@ -112,7 +114,7 @@ func (c *StatusCommand) Run(args []string) int {
 }
 
 type statusRow struct {
-	Id        string
+	ID        string
 	Migrated  bool
 	AppliedAt time.Time
 }

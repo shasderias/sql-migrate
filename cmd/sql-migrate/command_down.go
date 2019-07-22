@@ -4,7 +4,7 @@ import (
 	"flag"
 	"strings"
 
-	"github.com/rubenv/sql-migrate"
+	"github.com/shasderias/sql-migrate/pkg/migrate"
 )
 
 type DownCommand struct {
@@ -45,8 +45,7 @@ func (c *DownCommand) Run(args []string) int {
 		return 1
 	}
 
-	err := ApplyMigrations(migrate.Down, dryrun, limit)
-	if err != nil {
+	if err := ApplyMigrations(migrate.Down, dryrun, limit); err != nil {
 		ui.Error(err.Error())
 		return 1
 	}

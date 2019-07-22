@@ -5,6 +5,8 @@ import (
 	"os"
 
 	"github.com/mitchellh/cli"
+
+	_ "github.com/shasderias/sql-migrate/pkg/db/postgres"
 )
 
 func main() {
@@ -44,7 +46,7 @@ func realMain() int {
 
 	exitCode, err := cli.Run()
 	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Error executing CLI: %s\n", err.Error())
+		fmt.Fprintf(os.Stderr, "Error executing CLI: %s\n", err.Error())
 		return 1
 	}
 
