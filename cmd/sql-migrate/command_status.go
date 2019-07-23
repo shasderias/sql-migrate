@@ -49,7 +49,7 @@ func (c *StatusCommand) Run(args []string) int {
 		return 1
 	}
 
-	db, err := migrate.GetDB(env.Dialect, env.DataSource, env.TableName)
+	migrator, err := migrate.New(env.Dialect, env.DataSource, env.TableName)
 	if err != nil {
 		ui.Error(err.Error())
 		return 1
@@ -65,7 +65,7 @@ func (c *StatusCommand) Run(args []string) int {
 		return 1
 	}
 
-	records, err := db.GetRecords()
+	records, err := migrator.Records()
 	if err != nil {
 		ui.Error(err.Error())
 		return 1

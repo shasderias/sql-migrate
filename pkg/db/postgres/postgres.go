@@ -46,7 +46,7 @@ CREATE TABLE IF NOT EXISTS %s (
 	return err
 }
 
-func (db DB) GetRecords() ([]*migrate.Record, error) {
+func (db DB) Records() ([]*migrate.Record, error) {
 	const stmt = `
 SELECT
 	*

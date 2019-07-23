@@ -12,7 +12,7 @@ func ApplyMigrations(dir migrate.Direction, dryrun bool, limit int) error {
 		return fmt.Errorf("error parsing config: %s", err)
 	}
 
-	db, err := migrate.GetDB(env.Dialect, env.DataSource, env.TableName)
+	migrator, err := migrate.New(env.Dialect, env.DataSource, env.TableName)
 	if err != nil {
 		return err
 	}
@@ -22,7 +22,7 @@ func ApplyMigrations(dir migrate.Direction, dryrun bool, limit int) error {
 	}
 
 	if dryrun {
-		migrations, err := migrate.Plan(db, source, dir, limit)
+		migrations, err := migrator.Plan(source, dir, limit)
 		if err != nil {
 			return fmt.Errorf("error planning migration: %s", err)
 		}
@@ -31,7 +31,7 @@ func ApplyMigrations(dir migrate.Direction, dryrun bool, limit int) error {
 			PrintMigration(m, dir)
 		}
 	} else {
-		n, err := migrate.ExecMax(db, source, dir, limit)
+		n, err := migrator.ExecMax(source, dir, limit)
 		if err != nil {
 			return fmt.Errorf("migration failed: %s", err)
 		}

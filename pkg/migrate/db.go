@@ -3,11 +3,17 @@ package migrate
 import (
 	"database/sql"
 	"fmt"
+	"time"
 )
+
+type Record struct {
+	ID        string    `db:"id"`
+	AppliedAt time.Time `db:"applied_at"`
+}
 
 var supportedDialects = map[string]DB{}
 
-func GetDB(dialect, datasource, tableName string) (DB, error) {
+func getDB(dialect, datasource, tableName string) (DB, error) {
 	d, ok := supportedDialects[dialect]
 	if !ok {
 		return nil, fmt.Errorf("unsupported dialect: %s", dialect)
@@ -15,7 +21,7 @@ func GetDB(dialect, datasource, tableName string) (DB, error) {
 
 	db, err := d.New(datasource, tableName)
 	if err != nil {
-		return nil, fmt.Errorf("error connecting to db: %s", err)
+		return nil, fmt.Errorf("error connecting to DB: %s", err)
 	}
 
 	if err := db.CreateRecordTable(); err != nil {
@@ -35,7 +41,7 @@ type DB interface {
 	SqlDB() *sql.DB
 	New(datasource, tableName string) (DB, error)
 	CreateRecordTable() error
-	GetRecords() ([]*Record, error)
+	Records() ([]*Record, error)
 	Begin() (Tx, error)
 }
 

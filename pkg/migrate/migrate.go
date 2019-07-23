@@ -16,9 +16,19 @@ const (
 	Down
 )
 
-type Record struct {
-	ID        string    `db:"id"`
-	AppliedAt time.Time `db:"applied_at"`
+type Migrator struct {
+	DB
+}
+
+func New(dialect, datasource, tableName string) (*Migrator, error) {
+	db, err := getDB(dialect, datasource, tableName)
+	if err != nil {
+		return nil, err
+	}
+
+	return &Migrator{
+		DB: db,
+	}, nil
 }
 
 // Migration parsing
@@ -42,38 +52,38 @@ func parse(id string, r io.ReadSeeker) (*Migration, error) {
 }
 
 // Exec executes a set of migrations and returns the number of applied migrations.
-func Exec(db DB, m Source, dir Direction) (int, error) {
-	return ExecMax(db, m, dir, 0)
+func (m *Migrator) Exec(src Source, dir Direction) (int, error) {
+	return m.ExecMax(src, dir, 0)
 }
 
 // ExecMax executes a set of migrations, up to a maximum of max migrations, and
 // returns the number of applied migrations.
 //
 // Pass 0 for no limit (or use Exec).
-func ExecMax(db DB, src Source, dir Direction, max int) (int, error) {
+func (m *Migrator) ExecMax(src Source, dir Direction, max int) (int, error) {
 	// TODO: run migration + record insert in transaction
 
-	migrations, err := Plan(db, src, dir, max)
+	migrations, err := m.Plan(src, dir, max)
 	if err != nil {
 		return 0, err
 	}
 
 	// Apply migrations
 	applied := 0
-	for _, m := range migrations {
+	for _, mig := range migrations {
 		var executor SqlExecutor
 
-		if m.DisableTransaction {
-			executor = db
+		if mig.DisableTransaction {
+			executor = m.DB
 		} else {
-			executor, err = db.Begin()
+			executor, err = m.DB.Begin()
 			if err != nil {
-				return applied, newTxError(m, err)
+				return applied, newTxError(mig, err)
 			}
 		}
 
 		err := func() error {
-			for _, stmt := range m.Queries {
+			for _, stmt := range mig.Queries {
 				if _, err := executor.Exec(stmt); err != nil {
 					return err
 				}
@@ -82,7 +92,7 @@ func ExecMax(db DB, src Source, dir Direction, max int) (int, error) {
 			switch dir {
 			case Up:
 				err = executor.InsertRecord(&Record{
-					ID:        m.ID,
+					ID:        mig.ID,
 					AppliedAt: time.Now(),
 				})
 				if err != nil {
@@ -90,7 +100,7 @@ func ExecMax(db DB, src Source, dir Direction, max int) (int, error) {
 				}
 			case Down:
 				err := executor.DeleteRecord(&Record{
-					ID: m.ID,
+					ID: mig.ID,
 				})
 				if err != nil {
 					return err
@@ -105,11 +115,11 @@ func ExecMax(db DB, src Source, dir Direction, max int) (int, error) {
 		if tx, ok := executor.(Tx); ok {
 			if err != nil {
 				tx.Rollback()
-				return applied, newTxError(m, err)
+				return applied, newTxError(mig, err)
 			}
 			if err := tx.Commit(); err != nil {
 				tx.Rollback()
-				return applied, newTxError(m, err)
+				return applied, newTxError(mig, err)
 			}
 		} else {
 			if err != nil {
@@ -124,13 +134,13 @@ func ExecMax(db DB, src Source, dir Direction, max int) (int, error) {
 }
 
 // Plan a migration.
-func Plan(db DB, src Source, dir Direction, max int) ([]*PlannedMigration, error) {
+func (m *Migrator) Plan(src Source, dir Direction, max int) ([]*PlannedMigration, error) {
 	migrations, err := src.Find()
 	if err != nil {
 		return nil, err
 	}
 
-	records, err := db.GetRecords()
+	records, err := m.DB.Records()
 	if err != nil {
 		return nil, err
 	}
@@ -200,8 +210,8 @@ func Plan(db DB, src Source, dir Direction, max int) ([]*PlannedMigration, error
 // Will skip at most `max` migrations. Pass 0 for no limit.
 //
 // Returns the number of skipped migrations.
-func SkipMax(db DB, src Source, dir Direction, max int) (int, error) {
-	migrations, err := Plan(db, src, dir, max)
+func (m *Migrator) SkipMax(src Source, dir Direction, max int) (int, error) {
+	migrations, err := m.Plan(src, dir, max)
 	if err != nil {
 		return 0, err
 	}
@@ -212,9 +222,9 @@ func SkipMax(db DB, src Source, dir Direction, max int) (int, error) {
 		var executor SqlExecutor
 
 		if migration.DisableTransaction {
-			executor = db
+			executor = m.DB
 		} else {
-			executor, err = db.Begin()
+			executor, err = m.DB.Begin()
 			if err != nil {
 				return applied, newTxError(migration, err)
 			}

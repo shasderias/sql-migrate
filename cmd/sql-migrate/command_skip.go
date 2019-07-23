@@ -59,7 +59,7 @@ func SkipMigrations(dir migrate.Direction, dryrun bool, limit int) error {
 		return fmt.Errorf("error parsing config: %s", err)
 	}
 
-	db, err := migrate.GetDB(env.Dialect, env.DataSource, env.TableName)
+	migrator, err := migrate.New(env.Dialect, env.DataSource, env.TableName)
 	if err != nil {
 		return err
 	}
@@ -68,9 +68,9 @@ func SkipMigrations(dir migrate.Direction, dryrun bool, limit int) error {
 		Dir: env.Dir,
 	}
 
-	n, err := migrate.SkipMax(db, source, dir, limit)
+	n, err := migrator.SkipMax(source, dir, limit)
 	if err != nil {
-		return fmt.Errorf("Migration failed: %s", err)
+		return fmt.Errorf("migration failed: %s", err)
 	}
 
 	switch n {

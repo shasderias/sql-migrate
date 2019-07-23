@@ -21,17 +21,41 @@ var sqliteMigrations = []*migrate.Migration{
 }
 
 type SqliteMigrateSuite struct {
-	migrate.DB
+	*migrate.Migrator
 }
 
 var _ = Suite(&SqliteMigrateSuite{})
 
-func (s *SqliteMigrateSuite) SetUpTest(c *C) {
-	db, err := migrate.GetDB("sqlite3", ":memory:", "migration")
-	c.Assert(err, IsNil)
-	c.Assert(db, Not(IsNil))
+func (s *SqliteMigrateSuite) selectAllFromPeople() error {
+	_, err := s.DB.Exec("SELECT * FROM people;")
+	return err
+}
 
-	s.DB = db
+func (s *SqliteMigrateSuite) selectFirstNameFromPeople() error {
+	_, err := s.DB.Exec("SELECT first_name FROM people;")
+	return err
+}
+
+func (s *SqliteMigrateSuite) selectIDFromPeople() (int, error) {
+	var id int
+	row := s.DB.SqlDB().QueryRow("SELECT id FROM people;")
+	err := row.Scan(&id)
+	return id, err
+}
+
+func (s *SqliteMigrateSuite) countPeople() (int, error) {
+	var count int
+	row := s.DB.SqlDB().QueryRow("SELECT COUNT(*) FROM people;")
+	err := row.Scan(&count)
+	return count, err
+}
+
+func (s *SqliteMigrateSuite) SetUpTest(c *C) {
+	migrator, err := migrate.New("sqlite3", ":memory:", "migration")
+	c.Assert(err, IsNil)
+	c.Assert(migrator, Not(IsNil))
+
+	s.Migrator = migrator
 }
 
 func (s *SqliteMigrateSuite) TestRunMigration(c *C) {
@@ -40,16 +64,16 @@ func (s *SqliteMigrateSuite) TestRunMigration(c *C) {
 	}
 
 	// Executes one migration
-	n, err := migrate.Exec(s, migrations, migrate.Up)
+	n, err := s.Exec(migrations, migrate.Up)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 1)
 
 	// Can use table now
-	_, err = s.Exec("SELECT * FROM people")
+	err = s.selectAllFromPeople()
 	c.Assert(err, IsNil)
 
 	// Shouldn't apply migration again
-	n, err = migrate.Exec(s.DB, migrations, migrate.Up)
+	n, err = s.Exec(migrations, migrate.Up)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 0)
 }
@@ -59,11 +83,11 @@ func (s *SqliteMigrateSuite) TestRunMigrationEscapeTable(c *C) {
 		Migrations: sqliteMigrations[:1],
 	}
 
-	db, err := migrate.GetDB("sqlite3", ":memory:", "my migrations")
+	migrator, err := migrate.New("sqlite3", ":memory:", "my migrations")
 	c.Assert(err, IsNil)
 
 	// Executes one migration
-	n, err := migrate.Exec(db, migrations, migrate.Up)
+	n, err := migrator.Exec(migrations, migrate.Up)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 1)
 }
@@ -74,12 +98,12 @@ func (s *SqliteMigrateSuite) TestMigrateMultiple(c *C) {
 	}
 
 	// Executes two migrations
-	n, err := migrate.Exec(s, migrations, migrate.Up)
+	n, err := s.Exec(migrations, migrate.Up)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 2)
 
 	// Can use column now
-	_, err = s.Exec("SELECT first_name FROM people")
+	err = s.selectFirstNameFromPeople()
 	c.Assert(err, IsNil)
 }
 
@@ -89,7 +113,7 @@ func (s *SqliteMigrateSuite) TestMigrateIncremental(c *C) {
 	}
 
 	// Executes one migration
-	n, err := migrate.Exec(s, migrations, migrate.Up)
+	n, err := s.Exec(migrations, migrate.Up)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 1)
 
@@ -97,12 +121,12 @@ func (s *SqliteMigrateSuite) TestMigrateIncremental(c *C) {
 	migrations = &migrate.MemorySource{
 		Migrations: sqliteMigrations[:2],
 	}
-	n, err = migrate.Exec(s, migrations, migrate.Up)
+	n, err = s.Exec(migrations, migrate.Up)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 1)
 
 	// Can use column now
-	_, err = s.Exec("SELECT first_name FROM people")
+	err = s.selectFirstNameFromPeople()
 	c.Assert(err, IsNil)
 }
 
@@ -112,7 +136,7 @@ func (s *SqliteMigrateSuite) TestFileMigrate(c *C) {
 	}
 
 	// Executes two migrations
-	n, err := migrate.Exec(s, migrations, migrate.Up)
+	n, err := s.Exec(migrations, migrate.Up)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 2)
 
@@ -130,7 +154,7 @@ func (s *SqliteMigrateSuite) TestFileMigrate(c *C) {
 //	}
 //
 //	// Executes two migrations
-//	n, err := migrate.Exec(s, migrations, migrate.Up)
+//	n, err := s.Exec( migrations, migrate.Up)
 //	c.Assert(err, IsNil)
 //	c.Assert(n, Equals, 2)
 //
@@ -148,7 +172,7 @@ func (s *SqliteMigrateSuite) TestFileMigrate(c *C) {
 //	}
 //
 //	// Executes two migrations
-//	n, err := migrate.Exec(s, migrations, migrate.Up)
+//	n, err := s.Exec( migrations, migrate.Up)
 //	c.Assert(err, IsNil)
 //	c.Assert(n, Equals, 2)
 //
@@ -164,7 +188,7 @@ func (s *SqliteMigrateSuite) TestMigrateMax(c *C) {
 	}
 
 	// Executes one migration
-	n, err := migrate.ExecMax(s, migrations, migrate.Up, 1)
+	n, err := s.ExecMax(migrations, migrate.Up, 1)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 1)
 
@@ -180,40 +204,36 @@ func (s *SqliteMigrateSuite) TestMigrateDown(c *C) {
 		Dir: "test-migrations",
 	}
 
-	n, err := migrate.Exec(s, migrations, migrate.Up)
+	n, err := s.Exec(migrations, migrate.Up)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 2)
 
 	// Has data
-	var id int
-	row := s.SqlDB().QueryRow("SELECT id FROM people")
-	err = row.Scan(&id)
+	id, err := s.selectIDFromPeople()
 	c.Assert(err, IsNil)
 	c.Assert(id, Equals, int(1))
 
 	// Undo the last one
-	n, err = migrate.ExecMax(s, migrations, migrate.Down, 1)
+	n, err = s.ExecMax(migrations, migrate.Down, 1)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 1)
 
 	// No more data
-	row = s.SqlDB().QueryRow("SELECT COUNT(*) FROM people")
-	err = row.Scan(&id)
+	count, err := s.countPeople()
 	c.Assert(err, IsNil)
-	c.Assert(id, Equals, int(0))
+	c.Assert(count, Equals, int(0))
 
 	// Remove the table.
-	n, err = migrate.ExecMax(s, migrations, migrate.Down, 1)
+	n, err = s.ExecMax(migrations, migrate.Down, 1)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 1)
 
 	// Cannot query it anymore
-	row = s.SqlDB().QueryRow("SELECT COUNT(*) FROM people")
-	err = row.Scan(&id)
+	count, err = s.countPeople()
 	c.Assert(err, Not(IsNil))
 
 	// Nothing left to do.
-	n, err = migrate.ExecMax(s, migrations, migrate.Down, 1)
+	n, err = s.ExecMax(migrations, migrate.Down, 1)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 0)
 }
@@ -223,29 +243,26 @@ func (s *SqliteMigrateSuite) TestMigrateDownFull(c *C) {
 		Dir: "test-migrations",
 	}
 
-	n, err := migrate.Exec(s, migrations, migrate.Up)
+	n, err := s.Exec(migrations, migrate.Up)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 2)
 
 	// Has data
-	var id int
-	row := s.SqlDB().QueryRow("SELECT id FROM people")
-	err = row.Scan(&id)
+	id, err := s.selectIDFromPeople()
 	c.Assert(err, IsNil)
 	c.Assert(id, Equals, int(1))
 
 	// Undo the last one
-	n, err = migrate.Exec(s, migrations, migrate.Down)
+	n, err = s.Exec(migrations, migrate.Down)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 2)
 
 	// Cannot query it anymore
-	row = s.SqlDB().QueryRow("SELECT COUNT(*) FROM people")
-	err = row.Scan(&id)
+	_, err = s.countPeople()
 	c.Assert(err, Not(IsNil))
 
 	// Nothing left to do.
-	n, err = migrate.Exec(s, migrations, migrate.Down)
+	n, err = s.Exec(migrations, migrate.Down)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 0)
 }
@@ -264,14 +281,12 @@ func (s *SqliteMigrateSuite) TestMigrateTransaction(c *C) {
 	}
 
 	// Should fail, transaction should roll back the INSERT.
-	n, err := migrate.Exec(s, migrations, migrate.Up)
+	n, err := s.Exec(migrations, migrate.Up)
 	c.Assert(err, Not(IsNil))
 	c.Assert(n, Equals, 2)
 
 	// INSERT should be rolled back
-	var count int
-	row := s.SqlDB().QueryRow("SELECT COUNT(*) FROM people")
-	err = row.Scan(&count)
+	count, err := s.countPeople()
 	c.Assert(err, IsNil)
 	c.Assert(count, Equals, int(0))
 }
@@ -296,7 +311,7 @@ func (s *SqliteMigrateSuite) TestPlanMigration(c *C) {
 			},
 		},
 	}
-	n, err := migrate.Exec(s, migrations, migrate.Up)
+	n, err := s.Exec(migrations, migrate.Up)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 3)
 
@@ -306,12 +321,12 @@ func (s *SqliteMigrateSuite) TestPlanMigration(c *C) {
 		Down: []string{"ALTER TABLE people DROP COLUMN middle_name"},
 	})
 
-	plannedMigrations, err := migrate.Plan(s, migrations, migrate.Up, 0)
+	plannedMigrations, err := s.Plan(migrations, migrate.Up, 0)
 	c.Assert(err, IsNil)
 	c.Assert(plannedMigrations, HasLen, 1)
 	c.Assert(plannedMigrations[0].Migration, Equals, migrations.Migrations[3])
 
-	plannedMigrations, err = migrate.Plan(s, migrations, migrate.Down, 0)
+	plannedMigrations, err = s.Plan(migrations, migrate.Down, 0)
 	c.Assert(err, IsNil)
 	c.Assert(plannedMigrations, HasLen, 3)
 	c.Assert(plannedMigrations[0].Migration, Equals, migrations.Migrations[2])
@@ -339,18 +354,18 @@ func (s *SqliteMigrateSuite) TestSkipMigration(c *C) {
 			},
 		},
 	}
-	n, err := migrate.SkipMax(s, migrations, migrate.Up, 0)
+	n, err := s.SkipMax(migrations, migrate.Up, 0)
 	// there should be no errors
 	c.Assert(err, IsNil)
 	// we should have detected and skipped 3 migrations
 	c.Assert(n, Equals, 3)
 	// should not actually have the tables now since it was skipped
 	// so this query should fail
-	_, err = s.Exec("SELECT * FROM people")
+	err = s.selectAllFromPeople()
 	c.Assert(err, NotNil)
-	// run the migrations again, should execute none of them since we pegged the db level
+	// run the migrations again, should execute none of them since we pegged the DB level
 	// in the skip command
-	n2, err2 := migrate.Exec(s, migrations, migrate.Up)
+	n2, err2 := s.Exec(migrations, migrate.Up)
 	// there should be no errors
 	c.Assert(err2, IsNil)
 	// we should not have executed any migrations
@@ -374,7 +389,7 @@ func (s *SqliteMigrateSuite) TestPlanMigrationWithHoles(c *C) {
 			},
 		},
 	}
-	n, err := migrate.Exec(s, migrations, migrate.Up)
+	n, err := s.Exec(migrations, migrate.Up)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 2)
 
@@ -397,7 +412,7 @@ func (s *SqliteMigrateSuite) TestPlanMigrationWithHoles(c *C) {
 	})
 
 	// apply all the missing migrations
-	plannedMigrations, err := migrate.Plan(s, migrations, migrate.Up, 0)
+	plannedMigrations, err := s.Plan(migrations, migrate.Up, 0)
 	c.Assert(err, IsNil)
 	c.Assert(plannedMigrations, HasLen, 3)
 	c.Assert(plannedMigrations[0].Migration.ID, Equals, "2")
@@ -408,7 +423,7 @@ func (s *SqliteMigrateSuite) TestPlanMigrationWithHoles(c *C) {
 	c.Assert(plannedMigrations[2].Queries[0], Equals, up)
 
 	// first catch up to current target state 123, then migrate down 1 step to 12
-	plannedMigrations, err = migrate.Plan(s, migrations, migrate.Down, 1)
+	plannedMigrations, err = s.Plan(migrations, migrate.Down, 1)
 	c.Assert(err, IsNil)
 	c.Assert(plannedMigrations, HasLen, 2)
 	c.Assert(plannedMigrations[0].Migration.ID, Equals, "2")
@@ -417,7 +432,7 @@ func (s *SqliteMigrateSuite) TestPlanMigrationWithHoles(c *C) {
 	c.Assert(plannedMigrations[1].Queries[0], Equals, down)
 
 	// first catch up to current target state 123, then migrate down 2 steps to 1
-	plannedMigrations, err = migrate.Plan(s, migrations, migrate.Down, 2)
+	plannedMigrations, err = s.Plan(migrations, migrate.Down, 2)
 	c.Assert(err, IsNil)
 	c.Assert(plannedMigrations, HasLen, 3)
 	c.Assert(plannedMigrations[0].Migration.ID, Equals, "2")
@@ -469,7 +484,7 @@ func (s *SqliteMigrateSuite) TestPlanMigrationWithUnknownDatabaseMigrationApplie
 			},
 		},
 	}
-	n, err := migrate.Exec(s, migrations, migrate.Up)
+	n, err := s.Exec(migrations, migrate.Up)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 3)
 
@@ -481,12 +496,12 @@ func (s *SqliteMigrateSuite) TestPlanMigrationWithUnknownDatabaseMigrationApplie
 		Down: []string{"ALTER TABLE people DROP COLUMN middle_name"},
 	})
 
-	_, err = migrate.Plan(s, migrations, migrate.Up, 0)
+	_, err = s.Plan(migrations, migrate.Up, 0)
 	c.Assert(err, NotNil, Commentf("migrate.Up migrations should not have been applied when there "+
 		"is an unknown migration in the database"))
 	c.Assert(err, FitsTypeOf, &migrate.PlanError{})
 
-	_, err = migrate.Plan(s, migrations, migrate.Down, 0)
+	_, err = s.Plan(migrations, migrate.Down, 0)
 	c.Assert(err, NotNil, Commentf("Down migrations should not have been applied when there "+
 		"is an unknown migration in the database"))
 	c.Assert(err, FitsTypeOf, &migrate.PlanError{})
@@ -500,7 +515,7 @@ func (s *SqliteMigrateSuite) TestExecWithUnknownMigrationInDatabase(c *C) {
 	}
 
 	// Executes two migrations
-	n, err := migrate.Exec(s, migrations, migrate.Up)
+	n, err := s.Exec(migrations, migrate.Up)
 	c.Assert(err, IsNil)
 	c.Assert(n, Equals, 2)
 
@@ -521,15 +536,15 @@ func (s *SqliteMigrateSuite) TestExecWithUnknownMigrationInDatabase(c *C) {
 		Migrations: append(sqliteMigrations[:1], newSqliteMigrations...),
 	}
 
-	n, err = migrate.Exec(s, migrations, migrate.Up)
+	n, err = s.Exec(migrations, migrate.Up)
 	c.Assert(err, NotNil, Commentf("Migrations should not have been applied when there "+
 		"is an unknown migration in the database"))
 	c.Assert(err, FitsTypeOf, &migrate.PlanError{})
 	c.Assert(n, Equals, 0)
 
 	// Make sure the new columns are not actually created
-	_, err = s.Exec("SELECT middle_name FROM people")
+	_, err = s.SqlDB().Exec("SELECT middle_name FROM people")
 	c.Assert(err, NotNil)
-	_, err = s.Exec("SELECT age FROM people")
+	_, err = s.SqlDB().Exec("SELECT age FROM people")
 	c.Assert(err, NotNil)
 }

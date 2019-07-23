@@ -36,7 +36,7 @@ Each command requires a configuration file (which defaults to dbconfig.yml, but 
 
 	development:
 		dialect: sqlite3
-		datasource: test.db
+		datasource: test.DB
 		dir: migrations/sqlite3
 
 	production:
@@ -110,7 +110,7 @@ Set up a source of migrations, this can be from memory, from a set of files or f
 
 	// OR: Read migrations from a folder:
 	migrations := &migrate.FileSource{
-		Dir: "db/migrations",
+		Dir: "DB/migrations",
 	}
 
 	// OR: Use migrations from bindata:
@@ -122,12 +122,12 @@ Set up a source of migrations, this can be from memory, from a set of files or f
 
 Then use the Exec function to upgrade your database:
 
-	db, err := sql.Open("sqlite3", filename)
+	DB, err := sql.Open("sqlite3", filename)
 	if err != nil {
 		// Handle errors!
 	}
 
-	n, err := migrate.Exec(db, "sqlite3", migrations, migrate.Up)
+	n, err := migrate.Exec(DB, "sqlite3", migrations, migrate.Up)
 	if err != nil {
 		// Handle errors!
 	}
@@ -210,7 +210,7 @@ Just write your migration files as usual, as a set of SQL files in a folder.
 
 Then use bindata to generate a .go file with the migrations embedded:
 
-	go-bindata -pkg myapp -o bindata.go db/migrations/
+	go-bindata -pkg myapp -o bindata.go DB/migrations/
 
 The resulting bindata.go file will contain your migrations. Remember to regenerate your bindata.go file whenever you add/modify a migration (go generate will help here, once it arrives).
 
@@ -219,7 +219,7 @@ Use the AssetMigrationSource in your application to find the migrations:
 	migrations := &migrate.AssetMigrationSource{
 		Asset:    Asset,
 		AssetDir: AssetDir,
-		Dir:      "db/migrations",
+		Dir:      "DB/migrations",
 	}
 
 Both Asset and AssetDir are functions provided by bindata.

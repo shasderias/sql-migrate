@@ -60,12 +60,12 @@ func findMigrations(dir http.FileSystem) ([]*Migration, error) {
 		if strings.HasSuffix(info.Name(), ".sql") {
 			file, err := dir.Open(info.Name())
 			if err != nil {
-				return nil, fmt.Errorf("Error while opening %s: %s", info.Name(), err)
+				return nil, fmt.Errorf("error opening %s: %s", info.Name(), err)
 			}
 
 			migration, err := parse(info.Name(), file)
 			if err != nil {
-				return nil, fmt.Errorf("Error while parsing %s: %s", info.Name(), err)
+				return nil, fmt.Errorf("error parsing %s: %s", info.Name(), err)
 			}
 
 			migrations = append(migrations, migration)
