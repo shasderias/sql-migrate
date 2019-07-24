@@ -23,7 +23,7 @@ Usage: sql-migrate status [options] ...
 
 Options:
 
-  -config=dbconfig.yml   Configuration file to use.
+  -config=dbconfig.yaml   Configuration file to use.
   -env="development"     Environment.
 
 `

@@ -11,7 +11,7 @@ var ConfigFile string
 var ConfigEnvironment string
 
 func ConfigFlags(f *flag.FlagSet) {
-	f.StringVar(&ConfigFile, "config", "dbconfig.yml", "Configuration file to use.")
+	f.StringVar(&ConfigFile, "config", "dbconfig.yaml", "Configuration file to use.")
 	f.StringVar(&ConfigEnvironment, "env", "development", "Environment to use.")
 }
 

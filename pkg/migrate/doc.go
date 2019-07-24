@@ -32,7 +32,7 @@ The main command is called sql-migrate.
 		status    Show migration status
 		up        Migrates the database to the most recent version available
 
-Each command requires a configuration file (which defaults to dbconfig.yml, but can be specified with the -config flag). This config file should specify one or more environments:
+Each command requires a configuration file (which defaults to dbconfig.yaml, but can be specified with the -config flag). This config file should specify one or more environments:
 
 	development:
 		dialect: sqlite3

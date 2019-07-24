@@ -3,7 +3,7 @@
 # Tweak PATH for Travis
 export PATH=$PATH:$HOME/gopath/bin
 
-OPTIONS="-config=test-integration/dbconfig.yml -env postgres"
+OPTIONS="-config=test-integration/dbconfig.yaml -env postgres"
 
 set -ex
 

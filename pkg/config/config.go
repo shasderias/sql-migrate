@@ -59,7 +59,7 @@ func parseConfigFile(path string) (map[string]*Environment, error) {
 
 	var envs map[string]*Environment
 
-	err = yaml.Unmarshal(file, envs)
+	err = yaml.Unmarshal(file, &envs)
 	if err != nil {
 		return nil, err
 	}

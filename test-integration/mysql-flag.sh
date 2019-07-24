@@ -3,7 +3,7 @@
 # Tweak PATH for Travis
 export PATH=$PATH:$HOME/gopath/bin
 
-OPTIONS="-config=test-integration/dbconfig.yml -env mysql_noflag"
+OPTIONS="-config=test-integration/dbconfig.yaml -env mysql_noflag"
 
 set -ex
 
