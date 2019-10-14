@@ -33,7 +33,7 @@ Usage: sql-migrate new [options] name
 
 Options:
 
-  -config=dbconfig.yaml   Configuration file to use.
+  -config=dbconfig.yml   Configuration file to use.
   -env="development"     Environment.
   name                   The name of the migration
 `

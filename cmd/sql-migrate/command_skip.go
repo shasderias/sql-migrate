@@ -19,7 +19,7 @@ Usage: sql-migrate skip [options] ...
 
 Options:
 
-  -config=dbconfig.yaml   Configuration file to use.
+  -config=dbconfig.yml   Configuration file to use.
   -env="development"     Environment.
   -limit=0               Limit the number of migrations (0 = unlimited).
 

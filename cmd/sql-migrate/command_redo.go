@@ -19,7 +19,7 @@ Usage: sql-migrate redo [options] ...
 
 Options:
 
-  -config=dbconfig.yaml   Configuration file to use.
+  -config=dbconfig.yml   Configuration file to use.
   -env="development"     Environment.
   -dryrun                Don't apply migrations, just print them.
 

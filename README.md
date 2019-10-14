@@ -41,7 +41,7 @@ Available commands are:
     up        Migrates the database to the most recent version available
 ```
 
-Each command requires a configuration file (which defaults to `dbconfig.yaml`, but can be specified with the `-config` flag). This config file should specify one or more environments:
+Each command requires a configuration file (which defaults to `dbconfig.yml`, but can be specified with the `-config` flag). This config file should specify one or more environments:
 
 ```yml
 development:
@@ -81,7 +81,7 @@ Usage: sql-migrate up [options] ...
 
 Options:
 
-  -config=dbconfig.yaml   Configuration file to use.
+  -config=dbconfig.yml   Configuration file to use.
   -env="development"     Environment.
   -limit=0               Limit the number of migrations (0 = unlimited).
   -dryrun                Don't apply migrations, just print them.
