@@ -1,9 +1,11 @@
 package migrate
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 	"time"
+
+	"github.com/jackc/pgconn"
 )
 
 type Record struct {
@@ -38,7 +40,6 @@ func RegisterDB(dialect string, db DB) {
 type DB interface {
 	SqlExecutor
 
-	SqlDB() *sql.DB
 	New(datasource, tableName string) (DB, error)
 	CreateRecordTable() error
 	Records() ([]*Record, error)
@@ -52,7 +53,7 @@ type Tx interface {
 }
 
 type SqlExecutor interface {
-	Exec(query string, args ...interface{}) (sql.Result, error)
+	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
 	InsertRecord(record *Record) error
 	DeleteRecord(record *Record) error
 }

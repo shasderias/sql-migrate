@@ -1,10 +1,10 @@
 package postgres
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/jackc/pgx/v4"
 	"github.com/lib/pq"
 
 	"github.com/shasderias/sql-migrate/pkg/migrate"
@@ -15,24 +15,20 @@ func init() {
 }
 
 type DB struct {
-	*sqlx.DB
+	*pgx.Conn
 	tableName string
 }
 
-func (db DB) New(datasource, tableName string) (migrate.DB, error) {
-	dbConn, err := sqlx.Open("postgres", datasource)
+func (db DB) New(connString, tableName string) (migrate.DB, error) {
+	conn, err := pgx.Connect(context.Background(), connString)
 	if err != nil {
 		return nil, err
 	}
 
 	return &DB{
-		DB:        dbConn,
+		Conn:      conn,
 		tableName: tableName,
 	}, nil
-}
-
-func (db DB) SqlDB() *sql.DB {
-	return db.DB.DB
 }
 
 func (db DB) CreateRecordTable() error {
@@ -42,7 +38,7 @@ CREATE TABLE IF NOT EXISTS %s (
 	applied_at TIMESTAMPTZ NOT NULL
 );`
 
-	_, err := db.Exec(db.escapeTableName(stmt))
+	_, err := db.Exec(context.Background(), db.escapeTableName(stmt))
 	return err
 }
 
@@ -56,8 +52,20 @@ ORDER BY id ASC;`
 
 	var records []*migrate.Record
 
-	if err := db.Select(&records, db.escapeTableName(stmt)); err != nil {
+	rows, err := db.Query(context.Background(), db.escapeTableName(stmt))
+	if err != nil {
 		return nil, err
+	}
+
+	for rows.Next() {
+		var record migrate.Record
+		err := rows.Scan(&record.ID, &record.AppliedAt)
+		if err != nil {
+			return nil, err
+		}
+		records = append(records, &record)
+		return nil, err
+
 	}
 
 	return records, nil
@@ -69,26 +77,28 @@ const (
 )
 
 func (db DB) InsertRecord(record *migrate.Record) error {
-	_, err := db.Exec(db.escapeTableName(insertRecordStmt),
+	_, err := db.Exec(context.Background(), db.escapeTableName(insertRecordStmt),
 		record.ID, record.AppliedAt)
 
 	return err
 }
 
 func (db DB) DeleteRecord(record *migrate.Record) error {
-	_, err := db.Exec(db.escapeTableName(deleteRecordStmt),
+	_, err := db.Exec(context.Background(), db.escapeTableName(deleteRecordStmt),
 		record.ID)
 
 	return err
 }
 
 type Tx struct {
-	*sqlx.Tx
+	pgx.Tx
 	tableName string
 }
 
 func (db DB) Begin() (migrate.Tx, error) {
-	tx, err := db.Beginx()
+	tx, err := db.BeginTx(context.Background(), pgx.TxOptions{
+		IsoLevel: pgx.Serializable,
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -100,18 +110,18 @@ func (db DB) Begin() (migrate.Tx, error) {
 }
 
 func (db DB) escapeTableName(stmt string) string {
-	return fmt.Sprintf(stmt, pq.QuoteIdentifier(db.tableName))
+	return fmt.Sprintf(stmt, pgx.Identifier{db.tableName}.Sanitize())
 }
 
 func (tx Tx) InsertRecord(record *migrate.Record) error {
-	_, err := tx.Exec(tx.escapeTableName(insertRecordStmt),
+	_, err := tx.Exec(context.Background(), tx.escapeTableName(insertRecordStmt),
 		record.ID, record.AppliedAt)
 
 	return err
 }
 
 func (tx Tx) DeleteRecord(record *migrate.Record) error {
-	_, err := tx.Exec(tx.escapeTableName(deleteRecordStmt),
+	_, err := tx.Exec(context.Background(), tx.escapeTableName(deleteRecordStmt),
 		record.ID)
 
 	return err
@@ -119,4 +129,12 @@ func (tx Tx) DeleteRecord(record *migrate.Record) error {
 
 func (tx Tx) escapeTableName(stmt string) string {
 	return fmt.Sprintf(stmt, pq.QuoteIdentifier(tx.tableName))
+}
+
+func (tx Tx) Commit() error {
+	return tx.Commit()
+}
+
+func (tx Tx) Rollback() error {
+	return tx.Rollback()
 }

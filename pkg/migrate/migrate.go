@@ -1,6 +1,7 @@
 package migrate
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"sort"
@@ -84,7 +85,7 @@ func (m *Migrator) ExecMax(src Source, dir Direction, max int) (int, error) {
 
 		err := func() error {
 			for _, stmt := range mig.Queries {
-				if _, err := executor.Exec(stmt); err != nil {
+				if _, err := executor.Exec(context.Background(), stmt); err != nil {
 					return err
 				}
 			}
