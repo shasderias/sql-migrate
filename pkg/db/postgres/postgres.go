@@ -132,9 +132,9 @@ func (tx Tx) escapeTableName(stmt string) string {
 }
 
 func (tx Tx) Commit() error {
-	return tx.Commit()
+	return tx.Tx.Commit(context.Background())
 }
 
 func (tx Tx) Rollback() error {
-	return tx.Rollback()
+	return tx.Tx.Rollback(context.Background())
 }
