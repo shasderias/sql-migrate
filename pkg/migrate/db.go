@@ -44,6 +44,7 @@ type DB interface {
 	CreateRecordTable() error
 	Records() ([]*Record, error)
 	Begin() (Tx, error)
+	Close()
 }
 
 type Tx interface {

@@ -256,6 +256,10 @@ func (m *Migrator) SkipMax(src Source, dir Direction, max int) (int, error) {
 	return applied, nil
 }
 
+func (m *Migrator) Close() {
+	m.DB.Close()
+}
+
 // Filter a slice of migrations into ones that should be applied.
 func toApply(migrations []*Migration, current string, dir Direction) []*Migration {
 	var index = -1

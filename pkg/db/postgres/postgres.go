@@ -113,6 +113,10 @@ func (db DB) escapeTableName(stmt string) string {
 	return fmt.Sprintf(stmt, pgx.Identifier{db.tableName}.Sanitize())
 }
 
+func (db DB) Close() {
+	db.Conn.Close(context.Background())
+}
+
 func (tx Tx) InsertRecord(record *migrate.Record) error {
 	_, err := tx.Exec(context.Background(), tx.escapeTableName(insertRecordStmt),
 		record.ID, record.AppliedAt)
