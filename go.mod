@@ -3,8 +3,8 @@ module github.com/shasderias/sql-migrate
 go 1.12
 
 require (
-	github.com/jackc/pgconn v1.10.0
-	github.com/jackc/pgx/v4 v4.13.0
+	github.com/jackc/pgconn v1.10.1
+	github.com/jackc/pgx/v4 v4.14.0
 	github.com/lib/pq v1.10.2
 	github.com/mattn/go-runewidth v0.0.4 // indirect
 	github.com/mitchellh/cli v1.0.0

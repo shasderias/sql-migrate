@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/lib/pq"
 
 	"github.com/shasderias/sql-migrate/pkg/migrate"
@@ -15,18 +16,18 @@ func init() {
 }
 
 type DB struct {
-	*pgx.Conn
+	*pgxpool.Pool
 	tableName string
 }
 
 func (db DB) New(connString, tableName string) (migrate.DB, error) {
-	conn, err := pgx.Connect(context.Background(), connString)
+	conn, err := pgxpool.Connect(context.Background(), connString)
 	if err != nil {
 		return nil, err
 	}
 
 	return &DB{
-		Conn:      conn,
+		Pool:      conn,
 		tableName: tableName,
 	}, nil
 }
@@ -114,7 +115,7 @@ func (db DB) escapeTableName(stmt string) string {
 }
 
 func (db DB) Close() {
-	db.Conn.Close(context.Background())
+	db.Pool.Close()
 }
 
 func (tx Tx) InsertRecord(record *migrate.Record) error {
