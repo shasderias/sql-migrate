@@ -65,8 +65,6 @@ ORDER BY id ASC;`
 			return nil, err
 		}
 		records = append(records, &record)
-		return nil, err
-
 	}
 
 	return records, nil
